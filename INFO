@@ -1,0 +1,10 @@
+[info]
+name = cereus_insights
+version = 1.0.0
+longname = Cereus Insights — AI Monitoring Intelligence
+author = Thomas Urban
+email = info@urban-software.com
+url = https://www.urban-software.com
+description = Seasonality-aware anomaly detection, capacity forecasting, and LLM-powered alert summarization for Cacti.
+compat = 1.2.0
+requires =
