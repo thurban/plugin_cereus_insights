@@ -10,6 +10,8 @@ Capacity forecasting, seasonality-aware anomaly detection, AI-suggested threshol
 | **Anomaly Detection** | Professional+ | Seasonality baselines (hour-of-day × day-of-week). Z-score detection with configurable sigma threshold. |
 | **Threshold Suggestions** | Professional+ | Analyses baselines and recommends `thold_hi` / `thold_low` values for unconfigured datasources. One-click Create. |
 | **LLM Alert Summarization** | Enterprise | Batches Thold breach events and generates a plain-English summary via Anthropic, OpenAI, or Google. |
+| **Weekly Intelligence Report** | Enterprise | Scheduled weekly email covering top capacity concerns, anomalous devices, and threshold coverage. |
+| **Anomaly Noise Scoring** | Professional+ | Classifies anomalies as signal or noise; suggests per-datasource sigma adjustments to reduce alert fatigue. |
 
 ### Threshold Suggestions
 

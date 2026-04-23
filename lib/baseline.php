@@ -104,6 +104,14 @@ function cereus_insights_detect_anomalies(array $excluded_ds = []): int {
 	$sigma       = (float)  (read_config_option('cereus_insights_sigma')       ?: CEREUS_INSIGHTS_DEFAULT_SIGMA);
 	$min_samples = (int)    (read_config_option('cereus_insights_min_samples') ?: CEREUS_INSIGHTS_DEFAULT_MIN_SAMPLES);
 
+	$override_rows = db_fetch_assoc("SELECT local_data_id, datasource, sigma FROM plugin_cereus_insights_sigma_overrides");
+	$sigma_overrides = array();
+	if (cacti_sizeof($override_rows)) {
+		foreach ($override_rows as $ov) {
+			$sigma_overrides[$ov['local_data_id'] . ':' . $ov['datasource']] = (float) $ov['sigma'];
+		}
+	}
+
 	$hour = (int) date('G');
 	$dow  = (int) date('w');
 
@@ -150,14 +158,17 @@ function cereus_insights_detect_anomalies(array $excluded_ds = []): int {
 		$mean       = (float) $row['mean'];
 		$stddev     = (float) $row['stddev'];
 
-		$z_score = ($last_value - $mean) / $stddev;
-
-		if (abs($z_score) <= $sigma) {
-			continue;
-		}
-
 		$ldi = (int) $row['local_data_id'];
 		$ds  = $row['datasource'];
+
+		$key       = $ldi . ':' . $ds;
+		$eff_sigma = $sigma_overrides[$key] ?? $sigma;
+
+		$z_score = ($last_value - $mean) / $stddev;
+
+		if (abs($z_score) <= $eff_sigma) {
+			continue;
+		}
 
 		/* De-duplicate: skip if a breach was already recorded in the last 15 min */
 		$recent = db_fetch_cell_prepared(
@@ -171,7 +182,7 @@ function cereus_insights_detect_anomalies(array $excluded_ds = []): int {
 			continue;
 		}
 
-		$expected_hi = $mean + ($sigma * $stddev);
+		$expected_hi = $mean + ($eff_sigma * $stddev);
 
 		db_execute_prepared(
 			"INSERT INTO plugin_cereus_insights_breaches

@@ -33,6 +33,12 @@ switch ($action) {
 	case 'include_ds':
 		print json_encode(cereus_insights_suggest_include_ds());
 		break;
+	case 'apply_sigma':
+		print json_encode(cereus_insights_suggest_apply_sigma());
+		break;
+	case 'reset_sigma':
+		print json_encode(cereus_insights_suggest_reset_sigma());
+		break;
 	default:
 		print json_encode(array('ok' => false, 'error' => 'Invalid action'));
 }
@@ -219,6 +225,48 @@ function cereus_insights_suggest_include_ds(): array {
 	db_execute_prepared(
 		"DELETE FROM plugin_cereus_insights_suggest_skip WHERE datasource = ?",
 		array($datasource)
+	);
+	return array('ok' => true);
+}
+
+/* =========================================================================
+ * Action: apply per-datasource sigma override
+ * ====================================================================== */
+
+function cereus_insights_suggest_apply_sigma(): array {
+	if (!cereus_insights_has_anomaly_detection()) {
+		return array('ok' => false, 'error' => 'Professional license required');
+	}
+	$ldi   = isset($_POST['local_data_id']) ? (int)$_POST['local_data_id'] : 0;
+	$ds    = isset($_POST['datasource'])    ? trim($_POST['datasource'])    : '';
+	$sigma = isset($_POST['sigma'])         ? (float)$_POST['sigma']       : 0;
+	if ($ldi <= 0 || $ds === '' || $sigma < 1 || $sigma > 10) {
+		return array('ok' => false, 'error' => 'Invalid parameters');
+	}
+	db_execute_prepared(
+		"INSERT INTO plugin_cereus_insights_sigma_overrides (local_data_id, datasource, sigma)
+		 VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE sigma = VALUES(sigma)",
+		array($ldi, $ds, $sigma)
+	);
+	return array('ok' => true);
+}
+
+/* =========================================================================
+ * Action: reset per-datasource sigma override
+ * ====================================================================== */
+
+function cereus_insights_suggest_reset_sigma(): array {
+	if (!cereus_insights_has_anomaly_detection()) {
+		return array('ok' => false, 'error' => 'Professional license required');
+	}
+	$ldi = isset($_POST['local_data_id']) ? (int)$_POST['local_data_id'] : 0;
+	$ds  = isset($_POST['datasource'])    ? trim($_POST['datasource'])    : '';
+	if ($ldi <= 0 || $ds === '') {
+		return array('ok' => false, 'error' => 'Invalid parameters');
+	}
+	db_execute_prepared(
+		"DELETE FROM plugin_cereus_insights_sigma_overrides WHERE local_data_id = ? AND datasource = ?",
+		array($ldi, $ds)
 	);
 	return array('ok' => true);
 }

@@ -19,12 +19,15 @@ function cereus_insights_config_arrays() {
 	$realm_forecasts   = 0;
 	$realm_summaries   = 0;
 	$realm_suggestions = 0;
+	$realm_reports     = 0;
 
 	if (cacti_sizeof($realm_rows)) {
 		foreach ($realm_rows as $r) {
 			$f = $r['file'];
 			if (strpos($f, 'cereus_insights_forecasts.php') !== false) {
 				$realm_forecasts = (int) $r['realm_id'];
+			} elseif (strpos($f, 'cereus_insights_reports.php') !== false) {
+				$realm_reports = (int) $r['realm_id'];
 			} elseif (strpos($f, 'cereus_insights_summaries.php') !== false) {
 				$realm_summaries = (int) $r['realm_id'];
 			} elseif (strpos($f, 'cereus_insights_thsuggestions.php') !== false) {
@@ -50,6 +53,9 @@ function cereus_insights_config_arrays() {
 		$user_auth_realm_filenames['cereus_insights_thsuggestions.php'] = $realm_suggestions;
 		$user_auth_realm_filenames['cereus_insights_suggest_ajax.php']  = $realm_suggestions;
 	}
+	if ($realm_reports) {
+		$user_auth_realm_filenames['cereus_insights_reports.php'] = $realm_reports;
+	}
 
 	/* Add menu items under Cereus Tools */
 	$menu[__('Cereus Tools')]['plugins/cereus_insights/cereus_insights_forecasts.php'] =
@@ -58,4 +64,6 @@ function cereus_insights_config_arrays() {
 		__('Insights &mdash; Anomaly Breaches', 'cereus_insights');
 	$menu[__('Cereus Tools')]['plugins/cereus_insights/cereus_insights_summaries.php'] =
 		__('Insights &mdash; AI Summaries', 'cereus_insights');
+	$menu[__('Cereus Tools')]['plugins/cereus_insights/cereus_insights_reports.php'] =
+		__('Insights &mdash; Weekly Reports', 'cereus_insights');
 }

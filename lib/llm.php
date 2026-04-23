@@ -33,6 +33,8 @@ function cereus_insights_default_model(string $provider): string {
  *               On error: ['ok' => false, 'error' => string]
  */
 function cereus_insights_llm_dispatch(string $provider, string $api_key, string $model, string $system, string $user_content, int $max_tokens): array {
+	$proxy = trim((string) read_config_option('cereus_insights_llm_proxy'));
+
 	switch ($provider) {
 
 		/* ---------------------------------------------------------------- */
@@ -46,7 +48,7 @@ function cereus_insights_llm_dispatch(string $provider, string $api_key, string 
 				),
 			));
 			$ch = curl_init('https://api.openai.com/v1/chat/completions');
-			curl_setopt_array($ch, array(
+			$opts = array(
 				CURLOPT_POST           => true,
 				CURLOPT_POSTFIELDS     => $body,
 				CURLOPT_RETURNTRANSFER => true,
@@ -56,7 +58,9 @@ function cereus_insights_llm_dispatch(string $provider, string $api_key, string 
 					'Content-Type: application/json',
 					'Authorization: Bearer ' . $api_key,
 				),
-			));
+			);
+			if ($proxy !== '') $opts[CURLOPT_PROXY] = $proxy;
+			curl_setopt_array($ch, $opts);
 			$response   = curl_exec($ch);
 			$curl_error = curl_error($ch);
 			$http_code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -93,14 +97,16 @@ function cereus_insights_llm_dispatch(string $provider, string $api_key, string 
 			$url = 'https://generativelanguage.googleapis.com/v1beta/models/'
 			     . urlencode($model) . ':generateContent?key=' . urlencode($api_key);
 			$ch = curl_init($url);
-			curl_setopt_array($ch, array(
+			$opts = array(
 				CURLOPT_POST           => true,
 				CURLOPT_POSTFIELDS     => $body,
 				CURLOPT_RETURNTRANSFER => true,
 				CURLOPT_TIMEOUT        => 30,
 				CURLOPT_FOLLOWLOCATION => false,
 				CURLOPT_HTTPHEADER     => array('Content-Type: application/json'),
-			));
+			);
+			if ($proxy !== '') $opts[CURLOPT_PROXY] = $proxy;
+			curl_setopt_array($ch, $opts);
 			$response   = curl_exec($ch);
 			$curl_error = curl_error($ch);
 			$http_code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -131,7 +137,7 @@ function cereus_insights_llm_dispatch(string $provider, string $api_key, string 
 				),
 			));
 			$ch = curl_init('https://api.anthropic.com/v1/messages');
-			curl_setopt_array($ch, array(
+			$opts = array(
 				CURLOPT_POST           => true,
 				CURLOPT_POSTFIELDS     => $body,
 				CURLOPT_RETURNTRANSFER => true,
@@ -142,7 +148,9 @@ function cereus_insights_llm_dispatch(string $provider, string $api_key, string 
 					'x-api-key: ' . $api_key,
 					'anthropic-version: 2023-06-01',
 				),
-			));
+			);
+			if ($proxy !== '') $opts[CURLOPT_PROXY] = $proxy;
+			curl_setopt_array($ch, $opts);
 			$response   = curl_exec($ch);
 			$curl_error = curl_error($ch);
 			$http_code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);

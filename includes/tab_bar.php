@@ -27,6 +27,10 @@ function cereus_insights_tab_bar(string $active): void {
 			'url'   => $config['url_path'] . 'plugins/cereus_insights/cereus_insights_summaries.php',
 			'label' => __('AI Summaries', 'cereus_insights'),
 		),
+		'reports' => array(
+			'url'   => $config['url_path'] . 'plugins/cereus_insights/cereus_insights_reports.php',
+			'label' => __('Weekly Reports', 'cereus_insights'),
+		),
 		'help' => array(
 			'url'   => $config['url_path'] . 'plugins/cereus_insights/cereus_insights_help.php',
 			'label' => __('Help', 'cereus_insights'),

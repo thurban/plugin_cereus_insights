@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.0] - 2026-04-23
+
+### Added
+
+**Weekly Intelligence Report (Enterprise)**
+- Configurable weekly schedule (day of week, hour) generates a plain-English infrastructure report via the configured LLM provider
+- Report covers: top capacity concerns by days-to-saturation, top anomalous devices (7d), threshold coverage stats
+- Delivered by email and stored for review on the new Weekly Reports page (`cereus_insights_reports.php`)
+- Settings: enable/disable, day, hour, recipient email, items per section
+
+**Anomaly Noise Scoring + Sigma Suggestions (Professional)**
+- Daily purge cross-references anomaly records against `plugin_thold_log` (±30 min window) to classify each anomaly as signal (followed by a thold breach) or noise
+- Per-datasource stats table (`plugin_cereus_insights_anomaly_stats`) tracks total, signal, noise counts and noise %
+- Suggested sigma: +0.5 when noise ≥70%, +1.0 when noise ≥90%, capped at σ=5
+- Per-datasource sigma overrides (`plugin_cereus_insights_sigma_overrides`) — overrides are applied in anomaly detection without affecting the global setting
+- "Noise Analysis" panel on the Anomaly Breaches page with Apply σ and Reset buttons
+- Apply σ writes an override; Reset removes it; both take effect at the next poller cycle
+
+**Other**
+- Enable/disable checkbox for LLM Alert Summarization (Settings → LLM Alert Summarization)
+- HTTP Proxy setting for LLM API calls (`http://`, `socks5://` — all three providers)
+
+---
+
 ## [1.0.0] - 2026-04-23
 
 ### Added

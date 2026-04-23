@@ -32,6 +32,8 @@ function plugin_cereus_insights_install() {
 		__('Cereus Insights - AI Alert Summaries', 'cereus_insights'), 1);
 	api_plugin_register_realm('cereus_insights', 'cereus_insights_thsuggestions.php,cereus_insights_suggest_ajax.php',
 		__('Cereus Insights - Threshold Suggestions', 'cereus_insights'), 1);
+	api_plugin_register_realm('cereus_insights', 'cereus_insights_reports.php',
+		__('Cereus Insights - Weekly Reports', 'cereus_insights'), 1);
 
 	/* Enable all hooks */
 	api_plugin_enable_hooks('cereus_insights');
@@ -65,6 +67,9 @@ function plugin_cereus_insights_uninstall() {
 	db_execute('DROP TABLE IF EXISTS plugin_cereus_insights_suggest_cache');
 	db_execute('DROP TABLE IF EXISTS plugin_cereus_insights_seen');
 	db_execute('DROP TABLE IF EXISTS plugin_cereus_insights_ds_exclusions');
+	db_execute('DROP TABLE IF EXISTS plugin_cereus_insights_reports');
+	db_execute('DROP TABLE IF EXISTS plugin_cereus_insights_anomaly_stats');
+	db_execute('DROP TABLE IF EXISTS plugin_cereus_insights_sigma_overrides');
 }
 
 function plugin_cereus_insights_version() {
@@ -212,6 +217,7 @@ function cereus_insights_setup_tables() {
 		last_purge_run     INT UNSIGNED NOT NULL DEFAULT 0,
 		baseline_cursor    INT UNSIGNED NOT NULL DEFAULT 0,
 		forecast_cursor    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_report_run    INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id)
 	) $charset");
 
@@ -219,6 +225,39 @@ function cereus_insights_setup_tables() {
 		datasource  VARCHAR(64) NOT NULL DEFAULT '',
 		created_at  DATETIME NOT NULL,
 		PRIMARY KEY (datasource)
+	) $charset");
+
+	db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_reports (
+		id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		generated_at DATETIME NOT NULL,
+		period_start DATETIME NOT NULL,
+		period_end   DATETIME NOT NULL,
+		subject      VARCHAR(255) NOT NULL DEFAULT '',
+		report_text  TEXT NOT NULL,
+		model        VARCHAR(50) NOT NULL DEFAULT '',
+		tokens_used  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_generated_at (generated_at)
+	) $charset");
+
+	db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_anomaly_stats (
+		local_data_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		datasource     VARCHAR(64) NOT NULL DEFAULT '',
+		total_anomalies INT UNSIGNED NOT NULL DEFAULT 0,
+		signal_count   INT UNSIGNED NOT NULL DEFAULT 0,
+		noise_count    INT UNSIGNED NOT NULL DEFAULT 0,
+		noise_pct      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		suggested_sigma FLOAT NULL DEFAULT NULL,
+		evaluated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		PRIMARY KEY (local_data_id, datasource)
+	) $charset");
+
+	db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_sigma_overrides (
+		local_data_id INT UNSIGNED NOT NULL DEFAULT 0,
+		datasource    VARCHAR(64) NOT NULL DEFAULT '',
+		sigma         FLOAT NOT NULL DEFAULT 3,
+		updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		PRIMARY KEY (local_data_id, datasource)
 	) $charset");
 }
 
@@ -255,6 +294,12 @@ function cereus_insights_draw_navigation($nav) {
 		'title'   => __('Cereus Insights Help', 'cereus_insights'),
 		'mapping' => 'index.php:',
 		'url'     => 'cereus_insights_help.php',
+		'level'   => '1',
+	);
+	$nav['cereus_insights_reports.php:'] = array(
+		'title'   => __('Weekly Reports', 'cereus_insights'),
+		'mapping' => 'index.php:',
+		'url'     => 'cereus_insights_reports.php',
 		'level'   => '1',
 	);
 

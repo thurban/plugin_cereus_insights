@@ -32,6 +32,7 @@ include_once($config['base_path'] . '/plugins/cereus_insights/lib/rrd.php');
 include_once($config['base_path'] . '/plugins/cereus_insights/lib/baseline.php');
 include_once($config['base_path'] . '/plugins/cereus_insights/lib/forecast.php');
 include_once($config['base_path'] . '/plugins/cereus_insights/lib/llm.php');
+include_once($config['base_path'] . '/plugins/cereus_insights/lib/report.php');
 
 /* One-time migrations for already-installed instances */
 if (!read_config_option('cereus_insights_migration_v102')) {
@@ -108,6 +109,51 @@ db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_ds_exclusions (
 	PRIMARY KEY (datasource)
 ) ENGINE=InnoDB ROW_FORMAT=Dynamic DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+/* Feature additions — safe no-ops on fresh installs */
+db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_reports (
+	id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	generated_at DATETIME NOT NULL,
+	period_start DATETIME NOT NULL,
+	period_end   DATETIME NOT NULL,
+	subject      VARCHAR(255) NOT NULL DEFAULT '',
+	report_text  TEXT NOT NULL,
+	model        VARCHAR(50) NOT NULL DEFAULT '',
+	tokens_used  INT UNSIGNED NOT NULL DEFAULT 0,
+	PRIMARY KEY (id),
+	KEY idx_generated_at (generated_at)
+) ENGINE=InnoDB ROW_FORMAT=Dynamic DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_anomaly_stats (
+	local_data_id  INT UNSIGNED NOT NULL DEFAULT 0,
+	datasource     VARCHAR(64) NOT NULL DEFAULT '',
+	total_anomalies INT UNSIGNED NOT NULL DEFAULT 0,
+	signal_count   INT UNSIGNED NOT NULL DEFAULT 0,
+	noise_count    INT UNSIGNED NOT NULL DEFAULT 0,
+	noise_pct      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+	suggested_sigma FLOAT NULL DEFAULT NULL,
+	evaluated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (local_data_id, datasource)
+) ENGINE=InnoDB ROW_FORMAT=Dynamic DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_sigma_overrides (
+	local_data_id INT UNSIGNED NOT NULL DEFAULT 0,
+	datasource    VARCHAR(64) NOT NULL DEFAULT '',
+	sigma         FLOAT NOT NULL DEFAULT 3,
+	updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (local_data_id, datasource)
+) ENGINE=InnoDB ROW_FORMAT=Dynamic DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+db_execute("ALTER TABLE plugin_cereus_insights_seen ADD COLUMN IF NOT EXISTS last_report_run INT UNSIGNED NOT NULL DEFAULT 0");
+
+/* Ensure cereus_insights_reports.php is in the summaries realm for already-installed instances */
+db_execute(
+	"UPDATE plugin_realms
+	 SET file = CONCAT(file, ',cereus_insights_reports.php')
+	 WHERE plugin = 'cereus_insights'
+	   AND file LIKE '%cereus_insights_summaries%'
+	   AND file NOT LIKE '%cereus_insights_reports%'"
+);
+
 /**
  * Main poller entry point (called from hook or CLI).
  */
@@ -125,8 +171,8 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 		$max_log_id = (int) db_fetch_cell("SELECT COALESCE(MAX(id), 0) FROM plugin_thold_log");
 		db_execute_prepared(
 			"INSERT IGNORE INTO plugin_cereus_insights_seen
-				(id, last_log_id, last_baseline_run, last_forecast_run, last_purge_run, baseline_cursor, forecast_cursor)
-			 VALUES (1, ?, 0, 0, 0, 0, 0)",
+				(id, last_log_id, last_baseline_run, last_forecast_run, last_purge_run, baseline_cursor, forecast_cursor, last_report_run)
+			 VALUES (1, ?, 0, 0, 0, 0, 0, 0)",
 			array($max_log_id)
 		);
 		$state = array(
@@ -136,6 +182,7 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 			'last_purge_run'    => 0,
 			'baseline_cursor'   => 0,
 			'forecast_cursor'   => 0,
+			'last_report_run'   => 0,
 		);
 	}
 
@@ -145,6 +192,7 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 	$last_purge_run    = (int) $state['last_purge_run'];
 	$baseline_cursor   = (int) $state['baseline_cursor'];
 	$forecast_cursor   = (int) $state['forecast_cursor'];
+	$last_report_run   = (int) ($state['last_report_run'] ?? 0);
 
 	$batch_size = (int) (read_config_option('cereus_insights_batch_size') ?: CEREUS_INSIGHTS_DEFAULT_BATCH_SIZE);
 
@@ -158,6 +206,7 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 
 	$is_enterprise   = cereus_insights_license_at_least('enterprise');
 	$is_professional = cereus_insights_license_at_least('professional');
+	$llm_enabled     = ($is_enterprise && read_config_option('cereus_insights_llm_enabled') === 'on');
 
 	/* Alert ingestion and LLM flush only run from the main poller cycle,
 	 * not from boost_poller_bottom — avoids concurrent queue races. */
@@ -165,7 +214,7 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 		goto rrd_work;
 	}
 
-	if ($is_enterprise) {
+	if ($llm_enabled) {
 		$alert_cooldown = (int) (read_config_option('cereus_insights_llm_alert_cooldown') ?: CEREUS_INSIGHTS_DEFAULT_LLM_COOLDOWN);
 
 		$new_events = db_fetch_assoc_prepared(
@@ -260,7 +309,7 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 	/* 2. Enterprise: flush LLM queue if batch window has elapsed          */
 	/* ------------------------------------------------------------------ */
 
-	if ($is_enterprise) {
+	if ($llm_enabled) {
 		$batch_window = (int) (read_config_option('cereus_insights_llm_batch_window') ?: CEREUS_INSIGHTS_DEFAULT_LLM_BATCH_WIN);
 
 		$queue_count = (int) db_fetch_cell("SELECT COUNT(*) FROM plugin_cereus_insights_alert_queue");
@@ -276,7 +325,21 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 	}
 
 	/* ------------------------------------------------------------------ */
-	/* 3. Professional+: anomaly detection                                 */
+	/* 3. Enterprise: weekly intelligence report                           */
+	/* ------------------------------------------------------------------ */
+	if ($llm_enabled) {
+		if (cereus_insights_check_weekly_report($now, $last_report_run)) {
+			cereus_insights_generate_weekly_report();
+			$last_report_run = $now;
+			db_execute_prepared(
+				"UPDATE plugin_cereus_insights_seen SET last_report_run = ? WHERE id = 1",
+				array($now)
+			);
+		}
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* 4. Professional+: anomaly detection                                 */
 	/* ------------------------------------------------------------------ */
 
 	$new_breaches = 0;
@@ -285,7 +348,7 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 	}
 
 	/* ------------------------------------------------------------------ */
-	/* 4. Professional+: baseline refresh (hourly batch)                   */
+	/* 5. Professional+: baseline refresh (batch)                          */
 	/* ------------------------------------------------------------------ */
 
 	rrd_work:
@@ -357,7 +420,7 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 	}
 
 	/* ------------------------------------------------------------------ */
-	/* 5. Community+: forecast refresh (configurable interval, batch)     */
+	/* 6. Community+: forecast refresh (configurable interval, batch)     */
 	/* ------------------------------------------------------------------ */
 
 	$forecast_interval = (int) (read_config_option('cereus_insights_forecast_interval') ?: CEREUS_INSIGHTS_DEFAULT_FORECAST_INT);
@@ -398,7 +461,7 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 	}
 
 	/* ------------------------------------------------------------------ */
-	/* 6. Daily purge                                                      */
+	/* 7. Daily purge                                                      */
 	/* ------------------------------------------------------------------ */
 
 	if (($now - $last_purge_run) >= 86400) {
@@ -451,6 +514,46 @@ function cereus_insights_run_poller(bool $from_boost = false): void {
 		db_execute(
 			"DELETE f FROM plugin_cereus_insights_forecasts f
 			 JOIN plugin_cereus_insights_ds_exclusions ex ON ex.datasource = f.datasource"
+		);
+
+		/* Classify anomaly noise and update per-datasource stats */
+		$global_sigma = (float)(read_config_option('cereus_insights_sigma') ?: CEREUS_INSIGHTS_DEFAULT_SIGMA);
+		db_execute_prepared(
+			"INSERT INTO plugin_cereus_insights_anomaly_stats
+			     (local_data_id, datasource, total_anomalies, signal_count, noise_count, noise_pct, suggested_sigma)
+			 SELECT
+			     b.local_data_id,
+			     b.datasource,
+			     COUNT(*) AS total_anomalies,
+			     SUM(CASE WHEN tl.id IS NOT NULL THEN 1 ELSE 0 END) AS signal_count,
+			     SUM(CASE WHEN tl.id IS NULL     THEN 1 ELSE 0 END) AS noise_count,
+			     ROUND(100.0 * SUM(CASE WHEN tl.id IS NULL THEN 1 ELSE 0 END) / COUNT(*)) AS noise_pct,
+			     CASE
+			         WHEN ROUND(100.0 * SUM(CASE WHEN tl.id IS NULL THEN 1 ELSE 0 END) / COUNT(*)) >= 90
+			             THEN LEAST(5.0, COALESCE(ov.sigma, ?) + 1.0)
+			         WHEN ROUND(100.0 * SUM(CASE WHEN tl.id IS NULL THEN 1 ELSE 0 END) / COUNT(*)) >= 70
+			             THEN LEAST(5.0, COALESCE(ov.sigma, ?) + 0.5)
+			         ELSE NULL
+			     END AS suggested_sigma
+			 FROM plugin_cereus_insights_breaches b
+			 LEFT JOIN thold_data td
+			     ON td.local_data_id = b.local_data_id AND td.data_source_name = b.datasource
+			 LEFT JOIN plugin_thold_log tl
+			     ON tl.threshold_id = td.id
+			     AND tl.time BETWEEN UNIX_TIMESTAMP(b.breached_at) - 1800
+			                     AND UNIX_TIMESTAMP(b.breached_at) + 1800
+			 LEFT JOIN plugin_cereus_insights_sigma_overrides ov
+			     ON ov.local_data_id = b.local_data_id AND ov.datasource = b.datasource
+			 WHERE b.breached_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+			 GROUP BY b.local_data_id, b.datasource
+			 HAVING COUNT(*) >= 10
+			 ON DUPLICATE KEY UPDATE
+			     total_anomalies = VALUES(total_anomalies),
+			     signal_count    = VALUES(signal_count),
+			     noise_count     = VALUES(noise_count),
+			     noise_pct       = VALUES(noise_pct),
+			     suggested_sigma = VALUES(suggested_sigma)",
+			array($global_sigma, $global_sigma, $breach_ret)
 		);
 
 		db_execute_prepared(
