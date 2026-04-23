@@ -13,6 +13,15 @@
  */
 function cereus_insights_stats_box(): void {
 
+	if (!cereus_insights_tables_installed()) {
+		?>
+		<div style="padding:12px;color:#888;font-size:13px;">
+			&#9203; <?php print __('Plugin tables are being created — please wait for the next poller cycle, then reload.', 'cereus_insights'); ?>
+		</div>
+		<?php
+		return;
+	}
+
 	/* ---- gather data in as few queries as possible ---- */
 
 	$seen = db_fetch_row("SELECT * FROM plugin_cereus_insights_seen WHERE id = 1");

@@ -58,6 +58,21 @@ define('CEREUS_INSIGHTS_DEFAULT_LLM_MODEL_OAI',   'gpt-4o-mini');
 define('CEREUS_INSIGHTS_DEFAULT_LLM_MODEL_GOOGLE', 'gemini-1.5-flash');
 
 /**
+ * Return true when the plugin tables have been created (install completed).
+ * Uses a static cache so the DB is only queried once per request.
+ */
+function cereus_insights_tables_installed(): bool {
+	static $installed = null;
+	if ($installed !== null) return $installed;
+	$installed = (bool) db_fetch_cell(
+		"SELECT COUNT(*) FROM information_schema.TABLES
+		 WHERE TABLE_SCHEMA = DATABASE()
+		   AND TABLE_NAME   = 'plugin_cereus_insights_seen'"
+	);
+	return $installed;
+}
+
+/**
  * Return true when a low value is BAD (free disk, free memory, idle CPU…).
  * These metrics need thold_low / thold_warning_low instead of thold_hi / thold_warning_hi.
  */

@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.2] - 2026-04-23
+
+### Fixed
+- All UI pages now show a friendly "Plugin tables are being created — please wait for the next poller cycle" message instead of DB errors when visited before the install has completed or before tables exist. A single `cereus_insights_tables_installed()` helper (with static cache) checks for the sentinel table and short-circuits all six pages and the status box.
+
+---
+
 ## [1.1.1] - 2026-04-23
 
 ### Fixed

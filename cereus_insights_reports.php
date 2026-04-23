@@ -26,6 +26,15 @@ function cereus_insights_reports_page() {
 
 	cereus_insights_tab_bar('reports');
 
+	if (!cereus_insights_tables_installed()) {
+		html_start_box('', '100%', '', '3', 'center', '');
+		print '<tr><td class="center" style="padding:20px;color:#888;">'
+		    . __('Plugin tables are being created — please wait for the next poller cycle, then reload.', 'cereus_insights')
+		    . '</td></tr>';
+		html_end_box();
+		return;
+	}
+
 	/* ---- license gate ---- */
 	if (!cereus_insights_license_at_least('enterprise')) {
 		html_start_box(__('Weekly Intelligence Reports', 'cereus_insights'), '100%', '', '3', 'center', '');

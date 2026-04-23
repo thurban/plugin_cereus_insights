@@ -64,6 +64,16 @@ function cereus_insights_breach_actions() {
 function cereus_insights_breach_list() {
 	global $config;
 
+	if (!cereus_insights_tables_installed()) {
+		cereus_insights_tab_bar('breaches');
+		html_start_box('', '100%', '', '3', 'center', '');
+		print '<tr><td class="center" style="padding:20px;color:#888;">'
+		    . __('Plugin tables are being created — please wait for the next poller cycle, then reload.', 'cereus_insights')
+		    . '</td></tr>';
+		html_end_box();
+		return;
+	}
+
 	/* ---- license gate ---- */
 	if (!cereus_insights_has_anomaly_detection()) {
 		cereus_insights_tab_bar('breaches');

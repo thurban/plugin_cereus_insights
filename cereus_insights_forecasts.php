@@ -25,6 +25,16 @@ bottom_footer();
 function cereus_insights_forecasts_list() {
 	global $config;
 
+	if (!cereus_insights_tables_installed()) {
+		cereus_insights_tab_bar('forecasts');
+		html_start_box('', '100%', '', '3', 'center', '');
+		print '<tr><td class="center" style="padding:20px;color:#888;">'
+		    . __('Plugin tables are being created — please wait for the next poller cycle, then reload.', 'cereus_insights')
+		    . '</td></tr>';
+		html_end_box();
+		return;
+	}
+
 	/* ---- filter persistence ---- */
 	if (isset_request_var('clear')) {
 		kill_session_var('sess_cif_filter');
