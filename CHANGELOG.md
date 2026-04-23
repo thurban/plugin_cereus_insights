@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.1] - 2026-04-23
+
+### Fixed
+- Weekly Reports page: replaced bare-bones toggle with proper Cacti table (columns: Generated, Period, Model, Tokens, View/Hide button); JS uses event delegation; report body renders in a styled expandable row
+- Weekly Reports page: improved empty state with configuration guidance
+
+### Changed
+- Weekly intelligence report now includes a fourth section — **Alert Summary Review** — covering key themes from LLM alert summaries generated during the week
+- Report payload extended with: `alert_summaries_generated`, `alerts_summarized_7d`, `avg_alerts_per_summary`, `recent_alert_summaries`
+- Email stats table extended with alert summary counts
+- LLM max_tokens for weekly report raised from 600 to 800
+
+---
+
 ## [1.1.0] - 2026-04-23
 
 ### Added
