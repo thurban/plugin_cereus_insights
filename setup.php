@@ -129,8 +129,12 @@ function cereus_insights_setup_tables() {
 		UNIQUE KEY idx_ldi_ds (local_data_id, datasource),
 		KEY idx_host (host_id)
 	) $charset");
-	db_execute("ALTER TABLE plugin_cereus_insights_forecasts ADD INDEX IF NOT EXISTS idx_forecast_date (forecast_date)");
-	db_execute("ALTER TABLE plugin_cereus_insights_forecasts ADD INDEX IF NOT EXISTS idx_forecast_days (forecast_days)");
+	if (!db_fetch_cell("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'plugin_cereus_insights_forecasts' AND INDEX_NAME = 'idx_forecast_date'")) {
+		db_execute("ALTER TABLE plugin_cereus_insights_forecasts ADD INDEX idx_forecast_date (forecast_date)");
+	}
+	if (!db_fetch_cell("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'plugin_cereus_insights_forecasts' AND INDEX_NAME = 'idx_forecast_days'")) {
+		db_execute("ALTER TABLE plugin_cereus_insights_forecasts ADD INDEX idx_forecast_days (forecast_days)");
+	}
 
 	db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_breaches (
 		id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

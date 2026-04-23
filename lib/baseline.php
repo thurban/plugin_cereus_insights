@@ -123,7 +123,7 @@ function cereus_insights_detect_anomalies(array $excluded_ds = []): int {
 			b.datasource,
 			b.mean,
 			b.stddev,
-			td.lastread AS last_value,
+			td.lastread AS thold_lastread,
 			dl.host_id,
 			h.description AS host_description,
 			COALESCE(td.name_cache, dtd.name_cache) AS name_cache
@@ -149,7 +149,7 @@ function cereus_insights_detect_anomalies(array $excluded_ds = []): int {
 	}
 
 	foreach ($candidates as $row) {
-		$last_value = $row['last_value'];
+		$last_value = $row['thold_lastread'];
 		if ($last_value === null || $last_value === '') {
 			continue;
 		}

@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.7] - 2026-04-23
+
+### Fixed
+- `ALTER TABLE ... ADD INDEX IF NOT EXISTS` and `ADD COLUMN IF NOT EXISTS` are MariaDB-only syntax — not supported in MySQL. All such statements in `poller_cereus_insights.php` and `setup.php` replaced with `INFORMATION_SCHEMA` existence checks before each `ALTER TABLE`.
+- `td.lastread AS last_value` in the anomaly detection query used `last_value` as a column alias — also a reserved word in MySQL 8.0. Renamed alias to `thold_lastread` in `lib/baseline.php`.
+
+---
+
 ## [1.1.6] - 2026-04-23
 
 ### Fixed

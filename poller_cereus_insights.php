@@ -85,10 +85,13 @@ db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_suggest_cache (
 	KEY idx_conf (conf_pct)
 ) ENGINE=InnoDB ROW_FORMAT=Dynamic DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-/* Add new columns to existing installs — safe no-ops if already present */
-db_execute("ALTER TABLE plugin_cereus_insights_suggest_cache
-	ADD COLUMN IF NOT EXISTS suggested_low_alert DOUBLE NOT NULL DEFAULT 0 AFTER suggested_warn,
-	ADD COLUMN IF NOT EXISTS suggested_low_warn  DOUBLE NOT NULL DEFAULT 0 AFTER suggested_low_alert");
+/* Add new columns to existing installs — IF NOT EXISTS is MariaDB-only; use INFORMATION_SCHEMA check */
+if (!db_fetch_cell("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'plugin_cereus_insights_suggest_cache' AND COLUMN_NAME = 'suggested_low_alert'")) {
+	db_execute("ALTER TABLE plugin_cereus_insights_suggest_cache ADD COLUMN suggested_low_alert DOUBLE NOT NULL DEFAULT 0 AFTER suggested_warn");
+}
+if (!db_fetch_cell("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'plugin_cereus_insights_suggest_cache' AND COLUMN_NAME = 'suggested_low_warn'")) {
+	db_execute("ALTER TABLE plugin_cereus_insights_suggest_cache ADD COLUMN suggested_low_warn DOUBLE NOT NULL DEFAULT 0 AFTER suggested_low_alert");
+}
 
 /* Ensure the forecasts table exists — may be missing on partially-installed instances */
 $_charset = 'ENGINE=InnoDB ROW_FORMAT=Dynamic DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
@@ -112,11 +115,19 @@ db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_forecasts (
 ) $_charset");
 unset($_charset);
 
-/* Performance indexes — safe to re-run; IF NOT EXISTS is a no-op when already present */
-db_execute("ALTER TABLE thold_data ADD INDEX IF NOT EXISTS idx_ldi_ds (local_data_id, data_source_name)");
-db_execute("ALTER TABLE plugin_cereus_insights_baselines ADD INDEX IF NOT EXISTS idx_hour_dow (hour_of_day, day_of_week)");
-db_execute("ALTER TABLE plugin_cereus_insights_breaches ADD INDEX IF NOT EXISTS idx_ldi_ds_bat (local_data_id, datasource, breached_at)");
-db_execute("ALTER TABLE plugin_cereus_insights_forecasts ADD INDEX IF NOT EXISTS idx_forecast_days (forecast_days)");
+/* Performance indexes — checked via INFORMATION_SCHEMA for MySQL compatibility */
+if (!db_fetch_cell("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'thold_data' AND INDEX_NAME = 'idx_ldi_ds'")) {
+	db_execute("ALTER TABLE thold_data ADD INDEX idx_ldi_ds (local_data_id, data_source_name)");
+}
+if (!db_fetch_cell("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'plugin_cereus_insights_baselines' AND INDEX_NAME = 'idx_hour_dow'")) {
+	db_execute("ALTER TABLE plugin_cereus_insights_baselines ADD INDEX idx_hour_dow (hour_of_day, day_of_week)");
+}
+if (!db_fetch_cell("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'plugin_cereus_insights_breaches' AND INDEX_NAME = 'idx_ldi_ds_bat'")) {
+	db_execute("ALTER TABLE plugin_cereus_insights_breaches ADD INDEX idx_ldi_ds_bat (local_data_id, datasource, breached_at)");
+}
+if (!db_fetch_cell("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'plugin_cereus_insights_forecasts' AND INDEX_NAME = 'idx_forecast_days'")) {
+	db_execute("ALTER TABLE plugin_cereus_insights_forecasts ADD INDEX idx_forecast_days (forecast_days)");
+}
 
 db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_alert_seen (
 	thold_id      INT UNSIGNED NOT NULL DEFAULT 0,
@@ -165,7 +176,9 @@ db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_sigma_overrides (
 	PRIMARY KEY (local_data_id, datasource)
 ) ENGINE=InnoDB ROW_FORMAT=Dynamic DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-db_execute("ALTER TABLE plugin_cereus_insights_seen ADD COLUMN IF NOT EXISTS last_report_run INT UNSIGNED NOT NULL DEFAULT 0");
+if (!db_fetch_cell("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'plugin_cereus_insights_seen' AND COLUMN_NAME = 'last_report_run'")) {
+	db_execute("ALTER TABLE plugin_cereus_insights_seen ADD COLUMN last_report_run INT UNSIGNED NOT NULL DEFAULT 0");
+}
 
 /* Ensure cereus_insights_reports.php is in the summaries realm for already-installed instances */
 db_execute(
