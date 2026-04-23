@@ -58,17 +58,46 @@ define('CEREUS_INSIGHTS_DEFAULT_LLM_MODEL_OAI',   'gpt-4o-mini');
 define('CEREUS_INSIGHTS_DEFAULT_LLM_MODEL_GOOGLE', 'gemini-1.5-flash');
 
 /**
- * Return true when the plugin tables have been created (install completed).
+ * Return true when the plugin tables exist, creating them if they are missing.
+ *
+ * Handles the case where a user visits a page before the Plugin Manager
+ * Install step has run (or if the install failed). CREATE TABLE IF NOT EXISTS
+ * is idempotent so calling this multiple times is safe.
+ *
  * Uses a static cache so the DB is only queried once per request.
  */
 function cereus_insights_tables_installed(): bool {
 	static $installed = null;
 	if ($installed !== null) return $installed;
+
 	$installed = (bool) db_fetch_cell(
 		"SELECT COUNT(*) FROM information_schema.TABLES
 		 WHERE TABLE_SCHEMA = DATABASE()
 		   AND TABLE_NAME   = 'plugin_cereus_insights_seen'"
 	);
+
+	if (!$installed) {
+		/* Tables missing — create them now so the page works immediately. */
+		global $config;
+		if (!empty($config['base_path'])) {
+			$setup = $config['base_path'] . '/plugins/cereus_insights/setup.php';
+			if (file_exists($setup)) {
+				include_once($setup);
+				if (function_exists('cereus_insights_setup_tables')) {
+					cereus_insights_setup_tables();
+					/* Seed the state row so the poller has something to read. */
+					db_execute(
+						"INSERT IGNORE INTO plugin_cereus_insights_seen
+						     (id, last_log_id, last_baseline_run, last_forecast_run,
+						      last_purge_run, baseline_cursor, forecast_cursor, last_report_run)
+						 VALUES (1, 0, 0, 0, 0, 0, 0, 0)"
+					);
+					$installed = true;
+				}
+			}
+		}
+	}
+
 	return $installed;
 }
 

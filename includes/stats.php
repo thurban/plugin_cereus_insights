@@ -13,12 +13,8 @@
  */
 function cereus_insights_stats_box(): void {
 
+	/* Ensure tables exist — creates them on-the-fly if install was skipped or failed. */
 	if (!cereus_insights_tables_installed()) {
-		?>
-		<div style="padding:12px;color:#888;font-size:13px;">
-			&#9203; <?php print __('Plugin tables are being created — please wait for the next poller cycle, then reload.', 'cereus_insights'); ?>
-		</div>
-		<?php
 		return;
 	}
 

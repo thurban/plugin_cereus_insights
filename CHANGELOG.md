@@ -5,10 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.3] - 2026-04-23
+
+### Fixed
+- `cereus_insights_tables_installed()` now **auto-creates all plugin tables** on first page visit if they are missing, by including `setup.php` and calling `cereus_insights_setup_tables()`. This means the plugin works immediately after copying files even if the Cacti Plugin Manager install step was skipped or failed — the first page visit self-heals the install. Subsequent calls use a static cache (one DB check per request).
+- Removed the misleading "wait for next poller cycle" message — replaced with "Plugin initializing — please reload" which is only shown in the extreme case where `setup.php` itself is not accessible.
+
+---
+
 ## [1.1.2] - 2026-04-23
 
 ### Fixed
-- All UI pages now show a friendly "Plugin tables are being created — please wait for the next poller cycle" message instead of DB errors when visited before the install has completed or before tables exist. A single `cereus_insights_tables_installed()` helper (with static cache) checks for the sentinel table and short-circuits all six pages and the status box.
+- All UI pages now show a friendly message instead of DB errors when visited before tables exist.
 
 ---
 

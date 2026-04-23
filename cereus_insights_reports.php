@@ -29,7 +29,7 @@ function cereus_insights_reports_page() {
 	if (!cereus_insights_tables_installed()) {
 		html_start_box('', '100%', '', '3', 'center', '');
 		print '<tr><td class="center" style="padding:20px;color:#888;">'
-		    . __('Plugin tables are being created — please wait for the next poller cycle, then reload.', 'cereus_insights')
+		    . __('Plugin initializing — please reload this page.', 'cereus_insights')
 		    . '</td></tr>';
 		html_end_box();
 		return;
