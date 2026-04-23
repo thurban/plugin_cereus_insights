@@ -254,7 +254,7 @@ function cereus_insights_forecasts_list() {
 			?>
 			<td><?php print html_escape($row['host_description'] ?: $row['hostname']); ?></td>
 			<td><?php print html_escape($row['name_cache'] ?: $row['datasource']); ?></td>
-			<td class="right"><?php print number_format((float)$row['last_value'], 2); ?></td>
+			<td class="right"><?php print number_format((float)$row['last_rrd_value'], 2); ?></td>
 			<td class="right"><?php print html_escape($slope_text); ?></td>
 			<td class="center"><?php print $row['forecast_date'] ? html_escape($row['forecast_date']) : __('&mdash;', 'cereus_insights'); ?></td>
 			<td class="center" style="color:<?php print $fd_color; ?>;font-weight:bold;"><?php print $fd_text; ?></td>

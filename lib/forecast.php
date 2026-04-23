@@ -135,7 +135,7 @@ function cereus_insights_compute_forecast(int $local_data_id, int $days, array $
 		db_execute_prepared(
 			"INSERT INTO plugin_cereus_insights_forecasts
 				(local_data_id, datasource, host_id, name_cache,
-				 slope, intercept, r_squared, last_value, threshold_value,
+				 slope, intercept, r_squared, last_rrd_value, threshold_value,
 				 forecast_days, forecast_date, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
 			 ON DUPLICATE KEY UPDATE
@@ -144,7 +144,7 @@ function cereus_insights_compute_forecast(int $local_data_id, int $days, array $
 				slope           = VALUES(slope),
 				intercept       = VALUES(intercept),
 				r_squared       = VALUES(r_squared),
-				last_value      = VALUES(last_value),
+				last_rrd_value  = VALUES(last_rrd_value),
 				threshold_value = VALUES(threshold_value),
 				forecast_days   = VALUES(forecast_days),
 				forecast_date   = VALUES(forecast_date),

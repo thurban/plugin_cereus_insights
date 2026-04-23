@@ -101,7 +101,7 @@ db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_forecasts (
 	slope            DOUBLE NOT NULL DEFAULT 0,
 	intercept        DOUBLE NOT NULL DEFAULT 0,
 	r_squared        DOUBLE NOT NULL DEFAULT 0,
-	last_value       DOUBLE NOT NULL DEFAULT 0,
+	last_rrd_value   DOUBLE NOT NULL DEFAULT 0,
 	threshold_value  DOUBLE NOT NULL DEFAULT 0,
 	forecast_days    INT DEFAULT NULL,
 	forecast_date    VARCHAR(10) DEFAULT NULL,

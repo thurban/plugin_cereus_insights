@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.6] - 2026-04-23
+
+### Fixed
+- `last_value` is a **reserved word in MySQL 8.0** (window function). Renamed the column to `last_rrd_value` in `plugin_cereus_insights_forecasts`. Updated all SQL INSERT/UPDATE statements in `lib/forecast.php` and the display in `cereus_insights_forecasts.php`. This was the root cause of the forecasts table failing to create on MySQL 8.0 servers.
+
+---
+
 ## [1.1.5] - 2026-04-23
 
 ### Fixed

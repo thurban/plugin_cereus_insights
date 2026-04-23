@@ -120,7 +120,7 @@ function cereus_insights_setup_tables() {
 		slope            DOUBLE NOT NULL DEFAULT 0,
 		intercept        DOUBLE NOT NULL DEFAULT 0,
 		r_squared        DOUBLE NOT NULL DEFAULT 0,
-		last_value       DOUBLE NOT NULL DEFAULT 0,
+		last_rrd_value   DOUBLE NOT NULL DEFAULT 0,
 		threshold_value  DOUBLE NOT NULL DEFAULT 0,
 		forecast_days    INT DEFAULT NULL,
 		forecast_date    VARCHAR(10) DEFAULT NULL,
