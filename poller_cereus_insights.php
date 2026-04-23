@@ -96,21 +96,19 @@ db_execute("CREATE TABLE IF NOT EXISTS plugin_cereus_insights_forecasts (
 	id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 	local_data_id    INT UNSIGNED NOT NULL DEFAULT 0,
 	datasource       VARCHAR(64) NOT NULL DEFAULT '',
-	host_id          MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,
+	host_id          INT UNSIGNED NOT NULL DEFAULT 0,
 	name_cache       VARCHAR(255) NOT NULL DEFAULT '',
 	slope            DOUBLE NOT NULL DEFAULT 0,
 	intercept        DOUBLE NOT NULL DEFAULT 0,
-	r_squared        FLOAT NOT NULL DEFAULT 0,
+	r_squared        DOUBLE NOT NULL DEFAULT 0,
 	last_value       DOUBLE NOT NULL DEFAULT 0,
 	threshold_value  DOUBLE NOT NULL DEFAULT 0,
-	forecast_days    SMALLINT NULL DEFAULT NULL,
-	forecast_date    DATE NULL DEFAULT NULL,
+	forecast_days    INT DEFAULT NULL,
+	forecast_date    VARCHAR(10) DEFAULT NULL,
 	updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	PRIMARY KEY (id),
 	UNIQUE KEY idx_ldi_ds (local_data_id, datasource),
-	KEY idx_host (host_id),
-	KEY idx_forecast_date (forecast_date),
-	KEY idx_forecast_days (forecast_days)
+	KEY idx_host (host_id)
 ) $_charset");
 unset($_charset);
 

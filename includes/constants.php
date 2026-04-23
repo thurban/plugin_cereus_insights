@@ -97,7 +97,7 @@ function cereus_insights_tables_installed(): bool {
 	$installed = ($present >= count($required_tables));
 
 	if (!$installed) {
-		/* One or more tables missing — create all missing ones now. */
+		/* One or more tables missing — attempt to create them now. */
 		global $config;
 		if (!empty($config['base_path'])) {
 			$setup = $config['base_path'] . '/plugins/cereus_insights/setup.php';
@@ -111,7 +111,32 @@ function cereus_insights_tables_installed(): bool {
 						      last_purge_run, baseline_cursor, forecast_cursor, last_report_run)
 						 VALUES (1, 0, 0, 0, 0, 0, 0, 0)"
 					);
-					$installed = true;
+
+					/* Re-verify — do NOT assume success; log anything still missing. */
+					$after = (int) db_fetch_cell(
+						"SELECT COUNT(DISTINCT TABLE_NAME) FROM information_schema.TABLES
+						 WHERE TABLE_SCHEMA = DATABASE()
+						   AND TABLE_NAME IN ($list)"
+					);
+
+					if ($after >= count($required_tables)) {
+						$installed = true;
+					} else {
+						/* Report exactly which tables are still missing. */
+						$found = db_fetch_assoc(
+							"SELECT TABLE_NAME FROM information_schema.TABLES
+							 WHERE TABLE_SCHEMA = DATABASE()
+							   AND TABLE_NAME IN ($list)"
+						);
+						$found_names = $found ? array_column($found, 'TABLE_NAME') : array();
+						$missing = array_diff($required_tables, $found_names);
+						cacti_log(
+							'CEREUS INSIGHTS INSTALL ERROR: The following tables could not be created: '
+							. implode(', ', $missing)
+							. ' — check the MySQL error log or Cacti log for the CREATE TABLE error.',
+							false, 'SYSTEM'
+						);
+					}
 				}
 			}
 		}

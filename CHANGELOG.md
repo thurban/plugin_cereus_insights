@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.5] - 2026-04-23
+
+### Fixed
+- `plugin_cereus_insights_forecasts` table was silently failing to create on some MySQL/MariaDB configurations. Simplified the CREATE TABLE: `MEDIUMINT` → `INT`, `FLOAT` → `DOUBLE`, `SMALLINT NULL DEFAULT NULL` → `INT DEFAULT NULL`, `DATE NULL DEFAULT NULL` → `VARCHAR(10) DEFAULT NULL`, removed the indexes on nullable columns from CREATE TABLE (added via ALTER TABLE instead). This removes the combinations most likely to fail in strict or older MySQL environments.
+- `cereus_insights_tables_installed()` now re-verifies after calling `cereus_insights_setup_tables()` instead of blindly setting `$installed = true`. If any table is still missing after setup, logs the exact table name(s) to Cacti's log so the administrator can see the root cause in `cacti.log`.
+
+---
+
 ## [1.1.4] - 2026-04-23
 
 ### Fixed
