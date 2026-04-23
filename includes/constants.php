@@ -70,14 +70,34 @@ function cereus_insights_tables_installed(): bool {
 	static $installed = null;
 	if ($installed !== null) return $installed;
 
-	$installed = (bool) db_fetch_cell(
-		"SELECT COUNT(*) FROM information_schema.TABLES
-		 WHERE TABLE_SCHEMA = DATABASE()
-		   AND TABLE_NAME   = 'plugin_cereus_insights_seen'"
+	/* All 13 tables that must exist for the plugin to work. */
+	static $required_tables = array(
+		'plugin_cereus_insights_seen',
+		'plugin_cereus_insights_baselines',
+		'plugin_cereus_insights_forecasts',
+		'plugin_cereus_insights_breaches',
+		'plugin_cereus_insights_alert_queue',
+		'plugin_cereus_insights_alert_seen',
+		'plugin_cereus_insights_summaries',
+		'plugin_cereus_insights_suggest_skip',
+		'plugin_cereus_insights_suggest_cache',
+		'plugin_cereus_insights_ds_exclusions',
+		'plugin_cereus_insights_reports',
+		'plugin_cereus_insights_anomaly_stats',
+		'plugin_cereus_insights_sigma_overrides',
 	);
 
+	$list    = "'" . implode("','", $required_tables) . "'";
+	$present = (int) db_fetch_cell(
+		"SELECT COUNT(DISTINCT TABLE_NAME) FROM information_schema.TABLES
+		 WHERE TABLE_SCHEMA = DATABASE()
+		   AND TABLE_NAME IN ($list)"
+	);
+
+	$installed = ($present >= count($required_tables));
+
 	if (!$installed) {
-		/* Tables missing — create them now so the page works immediately. */
+		/* One or more tables missing — create all missing ones now. */
 		global $config;
 		if (!empty($config['base_path'])) {
 			$setup = $config['base_path'] . '/plugins/cereus_insights/setup.php';
@@ -85,7 +105,6 @@ function cereus_insights_tables_installed(): bool {
 				include_once($setup);
 				if (function_exists('cereus_insights_setup_tables')) {
 					cereus_insights_setup_tables();
-					/* Seed the state row so the poller has something to read. */
 					db_execute(
 						"INSERT IGNORE INTO plugin_cereus_insights_seen
 						     (id, last_log_id, last_baseline_run, last_forecast_run,

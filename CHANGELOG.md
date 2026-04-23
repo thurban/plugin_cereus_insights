@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.4] - 2026-04-23
+
+### Fixed
+- `cereus_insights_tables_installed()` now verifies all 13 plugin tables, not just the sentinel (`plugin_cereus_insights_seen`). On partially-installed systems where `seen` exists but other tables (e.g. `forecasts`) are missing, the self-healing now correctly detects and creates the missing tables.
+- Added explicit `CREATE TABLE IF NOT EXISTS plugin_cereus_insights_forecasts` to the poller migration block so the next poller cycle will also create the table if it is missing — previously only an `ALTER TABLE ... ADD INDEX` was present, which would silently fail on a missing table.
+
+---
+
 ## [1.1.3] - 2026-04-23
 
 ### Fixed
